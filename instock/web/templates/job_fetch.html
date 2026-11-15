@@ -1,0 +1,148 @@
+{% extends "layout/default.html" %}
+
+{% block main_content %}
+<style>
+    .job-page { padding: 16px 20px 28px; color: #333; }
+    .job-page h1 { margin: 0 0 6px; font-size: 22px; }
+    .job-page .hint { color: #666; margin-bottom: 14px; }
+    .job-page table { background: #fff; }
+    .job-page .status-running { color: #307ECC; }
+    .job-page .status-success { color: #3c763d; }
+    .job-page .status-failed { color: #a94442; }
+    .job-page .status-queued { color: #8a6d3b; }
+    .job-actions { margin: 12px 0 20px; }
+    .job-actions .btn { margin-right: 8px; }
+    .eastmoney-box { background: #fff; border: 1px solid #ddd; padding: 12px 14px; margin-bottom: 14px; }
+    .eastmoney-box h2 { margin: 0 0 8px; font-size: 16px; }
+    .eastmoney-box .probe-ok { color: #3c763d; }
+    .eastmoney-box .probe-bad { color: #a94442; }
+    .eastmoney-box li { margin: 4px 0; }
+</style>
+<div class="job-page">
+    <h1>拉取数据</h1>
+    <p class="hint">按列表顺序依次执行，同一时间只跑一个任务。指标、K 线形态和策略依赖日 K 线，耗时会更长。</p>
+    <div class="eastmoney-box">
+        <h2>东财接口</h2>
+        <p class="hint">先看行情网页，再各请求一次行情列表和日 K。行情接口被断开后不再连打，日 K 会改从腾讯拉取。</p>
+        <button type="button" class="btn btn-sm btn-default" id="btn-probe">检查东财接口</button>
+        <ul id="eastmoney-result"></ul>
+    </div>
+    <div id="job-alert" class="alert alert-info">正在读取任务状态…</div>
+    <table class="table table-bordered table-hover">
+        <thead>
+        <tr>
+            <th style="width:46px;"></th>
+            <th style="width:220px;">任务</th>
+            <th>说明</th>
+            <th style="width:90px;">最近状态</th>
+            <th style="width:170px;">最近开始</th>
+        </tr>
+        </thead>
+        <tbody id="job-body"></tbody>
+    </table>
+    <div class="job-actions">
+        <button type="button" class="btn btn-sm btn-default" id="btn-all">全选</button>
+        <button type="button" class="btn btn-sm btn-primary" id="btn-run">立即拉取</button>
+        <button type="button" class="btn btn-sm btn-danger" id="btn-stop">停止</button>
+    </div>
+    <h4>执行记录</h4>
+    <table class="table table-striped table-bordered">
+        <thead>
+        <tr>
+            <th style="width:170px;">开始时间</th>
+            <th style="width:180px;">任务</th>
+            <th style="width:70px;">来源</th>
+            <th style="width:80px;">状态</th>
+            <th>结果</th>
+        </tr>
+        </thead>
+        <tbody id="run-body"></tbody>
+    </table>
+</div>
+<script>
+    const statusText = {queued: "排队中", running: "执行中", success: "成功", failed: "失败"};
+    let holdAlertUntil = 0;
+    function showAlert(level, text, holdMs) {
+        $("#job-alert").attr("class", "alert alert-" + level).text(text);
+        holdAlertUntil = holdMs ? Date.now() + holdMs : 0;
+    }
+    function statusHtml(status) {
+        if (!status) return "";
+        return '<span class="status-' + status + '">' + (statusText[status] || status) + '</span>';
+    }
+    function render(data) {
+        if (data.running) {
+            const current = (data.jobs || []).filter(function (item) { return item.key === data.current_job; })[0];
+            showAlert("warning", current ? ("正在执行：" + current.name) : "任务执行中");
+        } else if (Date.now() >= holdAlertUntil) {
+            showAlert("success", "当前没有正在执行的任务");
+        }
+        const jobRows = (data.jobs || []).map(function (item) {
+            return '<tr><td><input class="job-check" type="checkbox" value="' + item.key + '"></td>' +
+                '<td>' + item.name + '</td><td>' + item.desc + '</td><td>' + statusHtml(item.last_status) +
+                '</td><td>' + (item.last_started_at || "") + '</td></tr>';
+        });
+        const checked = {};
+        $(".job-check:checked").each(function () { checked[this.value] = true; });
+        $("#job-body").html(jobRows.join(""));
+        $(".job-check").each(function () { this.checked = !!checked[this.value]; });
+        const runRows = (data.runs || []).map(function (item) {
+            const source = item.trigger_type === "auto" ? "自动" : "手动";
+            return '<tr><td>' + (item.started_at || "") + '</td><td>' + item.name + '</td><td>' + source +
+                '</td><td>' + statusHtml(item.status) + '</td><td>' + (item.message || "") + '</td></tr>';
+        });
+        $("#run-body").html(runRows.join("") || '<tr><td colspan="5">还没有执行记录</td></tr>');
+        $("#btn-run").prop("disabled", !!data.running);
+    }
+    function refresh() {
+        $.getJSON("/instock/job/api/state").done(function (res) {
+            if (res.ok) render(res.data);
+        }).fail(function () {
+            showAlert("danger", "读取任务状态失败", 4000);
+        });
+    }
+    $("#btn-all").on("click", function () { $(".job-check").prop("checked", true); });
+    $("#btn-run").on("click", function () {
+        const jobs = $(".job-check:checked").map(function () { return this.value; }).get();
+        if (!jobs.length) {
+            showAlert("warning", "请先选择要拉取的任务", 4000);
+            return;
+        }
+        $.ajax({
+            url: "/instock/job/api/run",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({jobs: jobs})
+        }).done(function () { refresh(); }).fail(function (xhr) {
+            const message = (xhr.responseJSON && xhr.responseJSON.message) || "拉取失败";
+            showAlert("danger", message, 5000);
+        });
+    });
+    $("#btn-stop").on("click", function () {
+        $.post("/instock/job/api/stop").always(refresh);
+    });
+    $("#btn-probe").on("click", function () {
+        const button = $(this);
+        button.prop("disabled", true);
+        $("#eastmoney-result").html("<li>正在检查，大约十几秒…</li>");
+        $.getJSON("/instock/job/api/eastmoney").done(function (res) {
+            const rows = (res.items || []).map(function (item) {
+                const klass = item.ok ? "probe-ok" : "probe-bad";
+                const state = item.ok ? "正常" : "异常";
+                return '<li class="' + klass + '">' + item.name + "：" + state + "。" +
+                    item.message + "（" + item.elapsed_ms + " 毫秒）</li>";
+            });
+            if (!rows.length) {
+                rows.push('<li class="probe-bad">没有返回检查结果</li>');
+            }
+            $("#eastmoney-result").html(rows.join(""));
+        }).fail(function () {
+            $("#eastmoney-result").html('<li class="probe-bad">检查没有完成</li>');
+        }).always(function () {
+            button.prop("disabled", false);
+        });
+    });
+    refresh();
+    setInterval(refresh, 2000);
+</script>
+{% end %}

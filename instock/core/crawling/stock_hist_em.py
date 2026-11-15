@@ -9,14 +9,16 @@ import time
 
 import pandas as pd
 import math
+import requests
 from functools import lru_cache
-from instock.core.eastmoney_fetcher import eastmoney_fetcher
+from instock.core.eastmoney_fetcher import eastmoney_fetcher, push_is_down
 
 __author__ = 'myh '
 __date__ = '2025/12/31 '
 
 # 创建全局实例，供所有函数使用
 fetcher = eastmoney_fetcher()
+_told_kline_fallback = False
 
 def stock_zh_a_spot_em() -> pd.DataFrame:
     """
@@ -333,10 +335,30 @@ def stock_zh_a_hist(
     :return: 每日行情
     :rtype: pandas.DataFrame
     """
-    code_id_dict = code_id_map_em()
+    if period == "daily" and push_is_down():
+        _tell_kline_fallback()
+        return _hist_tencent(symbol, start_date, end_date, adjust)
+    try:
+        return _hist_eastmoney(symbol, period, start_date, end_date, adjust)
+    except requests.exceptions.RequestException:
+        if period != "daily":
+            raise
+        _tell_kline_fallback()
+        return _hist_tencent(symbol, start_date, end_date, adjust)
+
+
+def _tell_kline_fallback():
+    global _told_kline_fallback
+    if _told_kline_fallback:
+        return
+    _told_kline_fallback = True
+    print("东财行情接口断开，日K改从腾讯拉取", flush=True)
+
+
+def _hist_eastmoney(symbol, period, start_date, end_date, adjust):
     adjust_dict = {"qfq": "1", "hfq": "2", "": "0"}
     period_dict = {"daily": "101", "weekly": "102", "monthly": "103"}
-    url = "http://push2his.eastmoney.com/api/qt/stock/kline/get"
+    url = "https://push2his.eastmoney.com/api/qt/stock/kline/get"
     params = {
         "fields1": "f1,f2,f3,f4,f5,f6",
         "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f116",
@@ -383,6 +405,88 @@ def stock_zh_a_hist(
     temp_df["换手率"] = pd.to_numeric(temp_df["换手率"])
 
     return temp_df
+
+
+def _hist_tencent(symbol, start_date, end_date, adjust):
+    """东财 push 接口断开时的日 K。开高低收和成交量与东财缓存一致，成交额按收盘价估算，换手率没有。"""
+    adj = adjust if adjust in ("qfq", "hfq") else ""
+    start = _ymd(start_date)
+    end = _ymd(end_date)
+    symbol_tx = _tx_symbol(symbol)
+    frames = []
+    page_end = end
+    for page in range(6):
+        rows = _tx_rows(symbol_tx, start, page_end, adj)
+        if not rows:
+            break
+        frame = _tx_frame(rows, start, page_end)
+        if frame.empty:
+            break
+        frames.append(frame)
+        first = frame["日期"].iloc[0]
+        if first <= start:
+            break
+        page_end = (pd.Timestamp(first) - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+        if page_end < start:
+            break
+        time.sleep(0.4)
+    if not frames:
+        return pd.DataFrame()
+    frame = pd.concat(frames, ignore_index=True)
+    frame = frame.drop_duplicates(subset=["日期"]).sort_values("日期")
+    prev = frame["收盘"].shift(1)
+    change = frame["收盘"] - prev
+    frame["成交额"] = (frame["收盘"] * frame["成交量"] * 100).round(2)
+    frame["振幅"] = ((frame["最高"] - frame["最低"]) / prev * 100).round(2)
+    frame["涨跌幅"] = (change / prev * 100).round(2)
+    frame["涨跌额"] = change.round(2)
+    frame["换手率"] = 0.0
+    frame = frame.fillna(0)
+    return frame[[
+        "日期", "开盘", "收盘", "最高", "最低", "成交量",
+        "成交额", "振幅", "涨跌幅", "涨跌额", "换手率",
+    ]].reset_index(drop=True)
+
+
+def _tx_rows(symbol_tx, start, end, adj):
+    session = requests.Session()
+    session.trust_env = False
+    response = session.get(
+        "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get",
+        params={"param": f"{symbol_tx},day,{start},{end},1200,{adj}"},
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Referer": "https://gu.qq.com/",
+        },
+        timeout=12,
+    )
+    response.raise_for_status()
+    node = ((response.json() or {}).get("data") or {}).get(symbol_tx) or {}
+    return node.get({"qfq": "qfqday", "hfq": "hfqday"}.get(adj, "day")) or node.get("day") or []
+
+
+def _tx_frame(rows, start, end):
+    frame = pd.DataFrame(rows).iloc[:, :6]
+    frame.columns = ["日期", "开盘", "收盘", "最高", "最低", "成交量"]
+    for name in ("开盘", "收盘", "最高", "最低", "成交量"):
+        frame[name] = pd.to_numeric(frame[name])
+    frame["日期"] = frame["日期"].astype(str).str.slice(0, 10)
+    return frame[(frame["日期"] >= start) & (frame["日期"] <= end)].copy()
+
+
+def _tx_symbol(symbol):
+    if symbol.startswith(("6", "9")):
+        return "sh" + symbol
+    if symbol.startswith(("4", "8")):
+        return "bj" + symbol
+    return "sz" + symbol
+
+
+def _ymd(value):
+    text = str(value)
+    if len(text) >= 8 and text[:8].isdigit():
+        return f"{text[0:4]}-{text[4:6]}-{text[6:8]}"
+    return text[:10]
 
 
 def stock_zh_a_hist_min_em(

@@ -26,6 +26,9 @@ import instock.lib.database as mdb
 import instock.lib.version as version
 import instock.web.dataTableHandler as dataTableHandler
 import instock.web.dataIndicatorsHandler as dataIndicatorsHandler
+import instock.web.jobHandler as jobHandler
+import instock.web.forecastHandler as forecastHandler
+import instock.web.job_manager as job_manager
 import instock.web.base as webBase
 
 __author__ = 'myh '
@@ -45,6 +48,16 @@ class Application(tornado.web.Application):
             (r"/instock/data/indicators", dataIndicatorsHandler.GetDataIndicatorsHandler),
             # 加入关注
             (r"/instock/control/attention", dataIndicatorsHandler.SaveCollectHandler),
+            (r"/instock/data/hist", dataIndicatorsHandler.FetchDailyKHandler),
+            (r"/instock/data/screen", dataIndicatorsHandler.SelectionScreenHandler),
+            (r"/instock/job/(fetch|schedule)", jobHandler.JobPageHandler),
+            (r"/instock/job/api/state", jobHandler.JobStateHandler),
+            (r"/instock/job/api/run", jobHandler.JobRunHandler),
+            (r"/instock/job/api/stop", jobHandler.JobStopHandler),
+            (r"/instock/job/api/eastmoney", jobHandler.EastMoneyProbeHandler),
+            (r"/instock/job/api/schedule", jobHandler.JobScheduleSaveHandler),
+            (r"/instock/forecast/accuracy", forecastHandler.ForecastAccuracyHandler),
+            (r"/instock/forecast", forecastHandler.ForecastPageHandler),
         ]
         settings = dict(  # 配置
             template_path=os.path.join(os.path.dirname(__file__), "templates"),
@@ -57,6 +70,7 @@ class Application(tornado.web.Application):
         super(Application, self).__init__(handlers, **settings)
         # Have one global connection to the blog DB across all handlers
         self.db = torndb.Connection(**mdb.MYSQL_CONN_TORNDB)
+        job_manager.start_scheduler()
 
 
 # 首页handler。

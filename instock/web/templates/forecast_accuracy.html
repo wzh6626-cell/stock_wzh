@@ -1,0 +1,55 @@
+{% extends "layout/default.html" %}
+
+{% block main_content %}
+<style>
+    .accuracy-page { padding: 16px 20px 32px; color: #333; }
+    .accuracy-page h1 { margin: 0 0 6px; font-size: 22px; }
+    .accuracy-page .hint { color: #666; margin-bottom: 12px; }
+    .accuracy-page p { line-height: 1.7; margin: 0 0 8px; }
+    .accuracy-page li { line-height: 1.7; }
+    .accuracy-page .warn { color: #a94442; font-weight: 700; font-size: 20px; }
+    .accuracy-page .ok-rate { color: #3c763d; font-weight: 700; font-size: 20px; }
+    .accuracy-page .tune-log { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .accuracy-page .tune-log th, .accuracy-page .tune-log td { border-top: 1px solid #eee; padding: 6px 8px; text-align: left; vertical-align: top; }
+</style>
+<div class="accuracy-page">
+    <h1>预判准确率</h1>
+    <p class="hint">对照自选股后来的收盘价，看当时的预判有多少次对上。数据日 {{ asof or "暂无" }}。</p>
+    {% if notice %}
+    <div class="alert alert-info">{{ notice }}</div>
+    {% end %}
+    {% if review["ready"] %}
+    <p class="{{ 'warn' if review['low'] else 'ok-rate' }}">{{ review["rate_text"] }}</p>
+    {% end %}
+    <p>{{ review["summary"] }}</p>
+    <p>{{ review["scheme_text"] }}</p>
+    {% if review["reasons"] %}
+    <p><b>预测偏差</b></p>
+    <ul>
+        {% for line in review["reasons"] %}
+        <li>{{ line }}</li>
+        {% end %}
+    </ul>
+    {% end %}
+    <form method="post" action="/instock/forecast/accuracy">
+        <button class="btn btn-primary btn-sm" type="submit">按偏差优化方案</button>
+    </form>
+    <p><b>方案优化记录</b></p>
+    {% if len(tune_logs) == 0 %}
+    <p>还没有优化记录。</p>
+    {% else %}
+    <table class="tune-log">
+        <tr><th>时间</th><th>优化前</th><th>试算后</th><th>结果</th><th>原因</th></tr>
+        {% for log in tune_logs %}
+        <tr>
+            <td>{{ log["created_at"] }}</td>
+            <td>{{ log["accuracy_before"] }}</td>
+            <td>{{ log["accuracy_after"] }}</td>
+            <td>{{ log["adopted"] }}</td>
+            <td>{{ log["reason"] }}</td>
+        </tr>
+        {% end %}
+    </table>
+    {% end %}
+</div>
+{% end %}

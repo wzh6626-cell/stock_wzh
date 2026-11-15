@@ -1,0 +1,74 @@
+{% extends "layout/default.html" %}
+
+{% block main_content %}
+<style>
+    .job-page { padding: 16px 20px 28px; color: #333; }
+    .job-page h1 { margin: 0 0 6px; font-size: 22px; }
+    .job-page .hint { color: #666; margin-bottom: 14px; }
+    .job-page table { background: #fff; }
+    .job-page input[type="time"] { height: 30px; }
+</style>
+<div class="job-page">
+    <h1>自动同步</h1>
+    <p class="hint">Web 服务保持运行时才会到点执行。仅工作日表示周一到周五。服务若在设定时间之后才启动，当天会补跑一次。</p>
+    <div id="job-alert" class="alert alert-info">正在读取设置…</div>
+    <table class="table table-bordered table-hover">
+        <thead>
+        <tr>
+            <th style="width:70px;">启用</th>
+            <th style="width:220px;">任务</th>
+            <th style="width:140px;">执行时间</th>
+            <th style="width:110px;">仅工作日</th>
+            <th>说明</th>
+        </tr>
+        </thead>
+        <tbody id="job-body"></tbody>
+    </table>
+    <button type="button" class="btn btn-primary" id="btn-save">保存设置</button>
+</div>
+<script>
+    function render(data) {
+        const rows = (data.jobs || []).map(function (item) {
+            return '<tr data-key="' + item.key + '">' +
+                '<td><input class="sch-enabled" type="checkbox"' + (item.enabled ? " checked" : "") + '></td>' +
+                '<td>' + item.name + '</td>' +
+                '<td><input class="sch-time form-control input-sm" type="time" value="' + item.run_time + '"></td>' +
+                '<td><input class="sch-weekdays" type="checkbox"' + (item.weekdays_only ? " checked" : "") + '></td>' +
+                '<td>' + item.desc + '</td></tr>';
+        });
+        $("#job-body").html(rows.join(""));
+        $("#job-alert").attr("class", "alert alert-success").text("设置已加载。默认不启用，保存后才会自动拉取。");
+    }
+    function refresh() {
+        $.getJSON("/instock/job/api/state").done(function (res) {
+            if (res.ok) render(res.data);
+        }).fail(function () {
+            $("#job-alert").attr("class", "alert alert-danger").text("读取设置失败");
+        });
+    }
+    $("#btn-save").on("click", function () {
+        const items = [];
+        $("#job-body tr").each(function () {
+            const row = $(this);
+            items.push({
+                job_key: row.data("key"),
+                enabled: row.find(".sch-enabled").prop("checked"),
+                run_time: row.find(".sch-time").val(),
+                weekdays_only: row.find(".sch-weekdays").prop("checked")
+            });
+        });
+        $.ajax({
+            url: "/instock/job/api/schedule",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({items: items})
+        }).done(function (res) {
+            $("#job-alert").attr("class", "alert alert-success").text(res.message || "已保存");
+        }).fail(function (xhr) {
+            const message = (xhr.responseJSON && xhr.responseJSON.message) || "保存失败";
+            $("#job-alert").attr("class", "alert alert-danger").text(message);
+        });
+    });
+    refresh();
+</script>
+{% end %}

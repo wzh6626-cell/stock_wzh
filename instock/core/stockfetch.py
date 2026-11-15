@@ -4,6 +4,8 @@
 import logging
 import os.path
 import datetime
+import random
+import time
 import numpy as np
 import pandas as pd
 import talib as tl
@@ -379,6 +381,7 @@ def stock_hist_cache(code, date_start, date_end=None, is_cache=True, adjust=''):
         if os.path.isfile(cache_file):
             return pd.read_pickle(cache_file, compression="gzip")
         else:
+            time.sleep(random.uniform(1.0, 1.6))
             if date_end is not None:
                 stock = she.stock_zh_a_hist(symbol=code, period="daily", start_date=date_start, end_date=date_end,
                                             adjust=adjust)

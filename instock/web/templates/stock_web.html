@@ -10,6 +10,12 @@
 <script src="/static/js/gc.spread.excelio.min.js" type="text/javascript"></script>
 <script src="/static/js/bootstrap-datepicker.min.js"></script>
 <script src="/static/js/bootstrap-datepicker.zh-CN.min.js"></script>
+<style>
+    #shortcut-bar { display:none; box-sizing:border-box; width:100%; height:68px; overflow:auto; padding:4px 8px; background:#f7f7f7; border-bottom:1px solid #e5e5e5; }
+    #shortcut-bar .shortcut-label { display:inline-block; height:26px; line-height:26px; margin-right:8px; color:#666; }
+    #shortcut-bar input { height:26px; margin:2px 6px 2px 0; padding:0 8px; background:#307ECC; color:#fff; border:1px solid #307ECC; cursor:pointer; }
+    #shortcut-bar input.active { background:#1b4f86; }
+</style>
 <div style="height: 100%;overflow: hidden;">
         <div class="table-header" style="width:100%;height:35px;">
             <div style="display:inline-block;float:left;height:100%;">
@@ -22,9 +28,25 @@
                 </div>
             </div>
             <div style="display:inline-block;float:right;height:100%;">
+                <span id="watch-tip" style="display:inline-block;height:100%;line-height:35px;margin-right:10px;color:#3c763d;"></span>
+                <input type="button" id="formula1" value="自定义1选股" accesskey="1" title="公式一：成交额大于2亿，市盈率0到25，市净率0到5，ROE大于12，预测PEG 0到1，净利润增长率大于10，扣非净利润增长率大于10，营收增长率大于0，资产负债率小于55，涨跌幅在-2到4，名称不含ST，并按ROE从高到低排序。快捷键 Alt+1" style="background-color:#307ECC;height:100%;color:#fff;">
+                <input type="button" id="formula2" value="巴菲特选股1" accesskey="2" title="巴菲特选股1：ROE大于15，并且净利润3年复合增长为正；最新毛利率大于40；每股自由现金流为正，资本开支不到净利润的一半；总负债可在4年净利润内还清；现价低于每股自由现金流按8%折现后的70%。表里没有历年ROE、历年毛利率、有息负债和完整折现模型，所以长期稳定用3年利润增长，财务安全用总负债代替有息负债。名称不含ST，按ROE从高到低排序。快捷键 Alt+2" style="background-color:#307ECC;height:100%;color:#fff;">
                 <input type="button" id="resetFilter" value="重置筛选" style="background-color:#307ECC;height:100%;">
                 <input type="button" id="saveExcel" value="保存Excel" style="background-color:#307ECC;height:100%;">
             </div>
+        </div>
+        <div id="shortcut-bar">
+            <span class="shortcut-label">选股快捷方式</span>
+            <input type="button" data-key="magic" value="神奇公式" title="神奇公式（Magic Formula）：用投入资本回报率代替资本收益率，用市盈率倒数代替盈利收益率。两项都从高到低排名，名次相加，取得分最好的 30 只。银行、非银行金融和名称带 ST 的不参与。表里没有原公式用的息税前利润和企业价值。">
+            <input type="button" data-key="peg" value="PEG成长估值公式" title="PEG成长估值公式：预测PEG大于 0 且小于 1，净资产收益率大于 15%，并且净利润 3 年复合增长为正。名称不含 ST。">
+            <input type="button" data-key="fscore" value="皮奥特罗斯基 F-Score" title="皮奥特罗斯基 F-Score：表里没有 9 项逐年变化。这里用 9 项当期指标各记 1 分：总资产报酬率大于 5，每股经营现金流为正，净资产收益率大于 10，经营现金流高于每股收益，流动比率大于 1.5，资产负债率低于 40，速动比率大于 1，毛利率大于 30，净利润同比增长且归属净利润为正。保留 8 分及以上，并且市净率大于 0、小于 1.5。名称不含 ST。">
+            <input type="button" data-key="graham" value="格雷厄姆防御型公式" title="格雷厄姆防御型公式：市盈率TTM和市净率都为正，两者相乘小于 22.5，流动比率大于 2，每股收益为正，最新股息率大于 0。名称不含 ST。表里没有连续 10 年盈利和持续分红记录。">
+            <input type="button" data-key="dividend" value="高股息红利低波模型" title="高股息红利低波模型：最新股息率大于 4%，归属净利润为正，每股自由现金流能覆盖按现价算出的股息。一年波动率用本地日K最近约 250 个交易日的涨跌计算，只保留处在这些股票里后 30% 的。没有本地日K的不入选。表里没有连续 5 年分红记录。">
+            <input type="button" data-key="canslim" value="欧奈尔 CAN SLIM 法则" title="欧奈尔 CAN SLIM 法则：净利润同比增长大于 25%，净利润 3 年复合增长为正，并且均线多头排列。名称不含 ST。创新产品、流通盘松紧、行业龙头相对强弱和机构认同，这张表里没有。">
+            <input type="button" data-key="rps" value="欧奈尔 RPS 相对强弱指标" title="欧奈尔 RPS 相对强弱指标：用本地日K计算过去 120 个交易日涨幅，在已有日K的股票里排百分位，大于 85，并且最新收盘价高于 50 日均线。没有本地日K的不参与排名。">
+            <input type="button" data-key="turtle" value="海龟交易唐奇安通道突破" title="海龟交易唐奇安通道突破：表里没有过去 20 日最高价。用向上突破 20 日均线，并且量比达到 1.5，代替收盘价突破 20 日高点、成交量达到 20 日均量的 1.5 倍。名称不含 ST。">
+            <input type="button" data-key="macd" value="均线多头排列 + MACD 零轴金叉" title="均线多头排列 + MACD 零轴金叉：均线多头排列，并且日线 MACD 金叉。金叉是否在零轴上方，这张表没有单独字段。名称不含 ST。">
+            <input type="button" data-key="chip" value="量价齐升筹码集中模型" title="量价齐升筹码集中模型：换手率在 3% 到 8%，量比至少 1.5，并且放量突破或向上突破 20 日均线。90% 筹码集中度这张表没有。名称不含 ST。">
         </div>
         <div id="instock-data" style="width:100%;height:calc( 100% - 55px );"></div>
         <div id="statusBar" style="width:100%;height:20px;"></div>
@@ -35,6 +57,18 @@
     let dateParam = "{{ date_now }}";
     const colInfos = {% raw web_module_data.column_names %};
     let myView;
+
+    let screenCache = null;
+    let filterSerial = 0;
+    let filterPainting = false;
+
+    if (nameParam !== "cn_stock_selection") {
+        document.getElementById("formula1").style.display = "none";
+        document.getElementById("formula2").style.display = "none";
+    } else {
+        document.getElementById("shortcut-bar").style.display = "block";
+        document.getElementById("instock-data").style.height = "calc(100% - 123px)";
+    }
 
     $(document).ready(function () {
         const spread = new GC.Spread.Sheets.Workbook(document.getElementById('instock-data'), {sheetCount: 0});
@@ -56,6 +90,8 @@
             });
             hyperlinkStyle.cellType = hl;
             colInfos[1].style = hyperlinkStyle;
+            bindAddWatchMenu(spread, sheet);
+            bindFetchDailyMenu(spread, sheet);
         }
         let statusBar = initStatusBar(spread);
         initSpread(spread, statusBar);
@@ -145,6 +181,8 @@
         dateParam = document.getElementById('dateid').value;
         if (dateParam_old === dateParam) return;
         document.getElementById("dateid_old").value = dateParam
+        screenCache = null;
+        markShortcut("");
         spread.suspendPaint();
         const dataManager = spread.dataManager();
         const productTable = dataManager.addTable("productTable", {
@@ -182,6 +220,115 @@
         spread.resumePaint();
     }
 
+    function normalizeCode(value) {
+        let text = String(value == null ? "" : value).replace(/\D/g, "");
+        if (text.length > 6) {
+            text = text.slice(-6);
+        }
+        if (text.length > 0 && text.length < 6) {
+            text = text.padStart(6, "0");
+        }
+        return text.length === 6 ? text : "";
+    }
+
+    function showWatchTip(text, ok) {
+        const tip = document.getElementById("watch-tip");
+        if (!tip) {
+            return;
+        }
+        tip.style.color = ok ? "#3c763d" : "#a94442";
+        tip.textContent = text;
+        window.clearTimeout(showWatchTip._timer);
+        showWatchTip._timer = window.setTimeout(function () {
+            tip.textContent = "";
+        }, 4000);
+    }
+
+    function bindAddWatchMenu(spread, tableSheet) {
+        const commandName = "addToWatch";
+        spread.commandManager().register(commandName, {
+            canUndo: false,
+            execute: function (context, options) {
+                const worksheet = tableSheet.getSheet();
+                const row = options.activeRow;
+                const code = normalizeCode(worksheet.getValue(row, 1));
+                const name = worksheet.getValue(row, 2) || "";
+                if (!code) {
+                    showWatchTip("这一行没有股票代码", false);
+                    return;
+                }
+                $.ajax({
+                    type: "get",
+                    url: "/instock/control/attention",
+                    data: {code: code, otype: "0"},
+                    success: function () {
+                        showWatchTip(code + " " + name + " 已加入自选", true);
+                    },
+                    error: function () {
+                        showWatchTip(code + " 加入自选失败", false);
+                    }
+                });
+            }
+        });
+        spread.contextMenu.menuData.push({
+            text: "加自选",
+            name: commandName,
+            command: commandName,
+            workArea: "viewport"
+        });
+    }
+
+    function bindFetchDailyMenu(spread, tableSheet) {
+        const commandName = "fetchDailyK";
+        spread.commandManager().register(commandName, {
+            canUndo: false,
+            execute: function (context, options) {
+                const worksheet = tableSheet.getSheet();
+                const row = options.activeRow;
+                const code = normalizeCode(worksheet.getValue(row, 1));
+                const name = worksheet.getValue(row, 2) || "";
+                if (!code) {
+                    showWatchTip("这一行没有股票代码", false);
+                    return;
+                }
+                const rawDate = worksheet.getValue(row, 0);
+                const date = rawDate && typeof rawDate.format === "function"
+                    ? rawDate.format("yyyy-MM-dd")
+                    : dateParam;
+                showWatchTip("正在拉取 " + code + " 的日K…", true);
+                $.ajax({
+                    type: "get",
+                    url: "/instock/data/hist",
+                    data: {code: code, date: date},
+                    timeout: 60000,
+                    success: function (payload) {
+                        const body = typeof payload === "string" ? JSON.parse(payload) : payload;
+                        showWatchTip((name ? code + " " + name + " " : "") + (body.message || "已拉取日K"), true);
+                    },
+                    error: function (xhr) {
+                        showWatchTip(readHistError(xhr, code), false);
+                    }
+                });
+            }
+        });
+        spread.contextMenu.menuData.push({
+            text: "拉取日K",
+            name: commandName,
+            command: commandName,
+            workArea: "viewport"
+        });
+    }
+
+    function readHistError(xhr, code) {
+        try {
+            const body = JSON.parse(xhr.responseText);
+            if (body && body.message) {
+                return body.message;
+            }
+        } catch (e) {}
+        return code + " 拉取日K失败";
+    }
+
     function initEvent(spread,statusBar) {
         document.getElementById('saveExcel').onclick = function() {
             const excelIo = new GC.Spread.Excel.IO();
@@ -193,15 +340,484 @@
             });
         };
         document.getElementById("resetFilter").onclick = function() {
-            spread.getActiveSheetTab().getSheet().rowFilter().reset();
-            if (statusBar) {
-                let recordItem = statusBar.get("recordCountItem");
-                if (recordItem) {
-                    recordItem.visibleLength =recordItem.dataSourceLength
-                    recordItem.onUpdate();
-                }
+            markShortcut("");
+            const job = takeFilter();
+            const tip = document.getElementById("watch-tip");
+            if (tip) {
+                window.clearTimeout(showWatchTip._timer);
+                tip.textContent = "";
             }
+            beginMatch(spread, statusBar, job, function () { return true; }, "");
         };
+        document.getElementById("formula1").onclick = function() {
+            markShortcut("");
+            const job = takeFilter();
+            beginMatch(spread, statusBar, job, matchFormula1, "自定义1选股");
+        };
+        document.getElementById("formula2").onclick = function() {
+            markShortcut("");
+            const job = takeFilter();
+            beginMatch(spread, statusBar, job, matchBuffett, "巴菲特选股1");
+        };
+        const shortcutButtons = document.querySelectorAll("#shortcut-bar input");
+        for (let i = 0; i < shortcutButtons.length; i++) {
+            shortcutButtons[i].onclick = function () {
+                applyNamedShortcut(spread, statusBar, this.getAttribute("data-key"));
+            };
+        }
+    }
+
+    function refreshRecordCount(statusBar, visibleLength) {
+        if (!statusBar || !myView) {
+            return;
+        }
+        const recordItem = statusBar.get("recordCountItem");
+        if (!recordItem) {
+            return;
+        }
+        recordItem.dataSourceLength = myView.length();
+        recordItem.visibleLength = visibleLength;
+        recordItem.cno = visibleLength === 0 ? 0 : 1;
+        recordItem.onUpdate();
+    }
+
+    function cellNumber(worksheet, row, field) {
+        const index = columnIndex(field);
+        if (index < 0) {
+            return null;
+        }
+        const number = Number(worksheet.getValue(row, index));
+        return Number.isFinite(number) ? number : null;
+    }
+
+    function matchBuffett(worksheet, row) {
+        const nameIndex = columnIndex("name");
+        const name = nameIndex < 0 ? "" : String(worksheet.getValue(row, nameIndex) || "");
+        if (name.toUpperCase().indexOf("ST") >= 0) {
+            return false;
+        }
+        const roe = cellNumber(worksheet, row, "roe_weight");
+        const growth = cellNumber(worksheet, row, "netprofit_growthrate_3y");
+        const margin = cellNumber(worksheet, row, "sale_gpr");
+        const fcf = cellNumber(worksheet, row, "per_fcfe");
+        const operatingCash = cellNumber(worksheet, row, "per_netcash_operate");
+        const eps = cellNumber(worksheet, row, "basic_eps");
+        const price = cellNumber(worksheet, row, "new_price");
+        const debtRatio = cellNumber(worksheet, row, "debt_asset_ratio");
+        const bookValue = cellNumber(worksheet, row, "bvps");
+        const shares = cellNumber(worksheet, row, "total_shares");
+        const profit = cellNumber(worksheet, row, "parent_netprofit");
+        if (!(roe > 15) || !(growth > 0) || !(margin > 40)) {
+            return false;
+        }
+        if (!(fcf > 0) || !(eps > 0) || !(price > 0) || operatingCash === null) {
+            return false;
+        }
+        if ((operatingCash - fcf) / eps >= 0.5) {
+            return false;
+        }
+        if (!(profit > 0) || !(bookValue > 0) || !(shares > 0)) {
+            return false;
+        }
+        if (debtRatio === null || debtRatio < 0 || debtRatio >= 100) {
+            return false;
+        }
+        const liabilities = bookValue * shares * debtRatio / (100 - debtRatio);
+        if (liabilities / profit >= 4) {
+            return false;
+        }
+        return fcf / price > 0.08 / 0.7;
+    }
+
+    function columnIndex(field) {
+        for (let i = 0; i < colInfos.length; i++) {
+            if (colInfos[i].value === field) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    function markShortcut(key) {
+        const buttons = document.querySelectorAll("#shortcut-bar input");
+        for (let i = 0; i < buttons.length; i++) {
+            if (buttons[i].getAttribute("data-key") === key) {
+                buttons[i].classList.add("active");
+            } else {
+                buttons[i].classList.remove("active");
+            }
+        }
+    }
+
+    function passName(worksheet, row) {
+        const index = columnIndex("name");
+        const name = index < 0 ? "" : String(worksheet.getValue(row, index) || "");
+        return name.toUpperCase().indexOf("ST") < 0;
+    }
+
+    function cellYes(worksheet, row, field) {
+        const index = columnIndex(field);
+        if (index < 0) {
+            return false;
+        }
+        const value = worksheet.getValue(row, index);
+        return value === "是" || value === 1 || value === true;
+    }
+
+    function rankDesc(rows, field, rankField) {
+        const ordered = rows.slice().sort(function (a, b) {
+            return b[field] - a[field] || String(a.code).localeCompare(String(b.code));
+        });
+        ordered.forEach(function (item, index) {
+            item[rankField] = index + 1;
+        });
+    }
+
+    function magicCodes(worksheet) {
+        const picked = [];
+        const rowCount = worksheet.getRowCount();
+        const codeIndex = columnIndex("code");
+        const industryIndex = columnIndex("industry");
+        for (let row = 0; row < rowCount; row++) {
+            if (!passName(worksheet, row)) {
+                continue;
+            }
+            const industry = industryIndex < 0 ? "" : String(worksheet.getValue(row, industryIndex) || "");
+            if (industry === "银行" || industry === "非银行金融") {
+                continue;
+            }
+            const roic = cellNumber(worksheet, row, "roic");
+            const pe = cellNumber(worksheet, row, "pe9");
+            if (!(roic > 0) || !(pe > 0)) {
+                continue;
+            }
+            picked.push({
+                code: normalizeCode(worksheet.getValue(row, codeIndex)),
+                roic: roic,
+                ey: 1 / pe
+            });
+        }
+        rankDesc(picked, "roic", "rocRank");
+        rankDesc(picked, "ey", "eyRank");
+        picked.forEach(function (item) {
+            item.score = item.rocRank + item.eyRank;
+        });
+        picked.sort(function (a, b) {
+            return a.score - b.score || String(a.code).localeCompare(String(b.code));
+        });
+        const codes = new Set();
+        picked.slice(0, 30).forEach(function (item) {
+            if (item.code) {
+                codes.add(item.code);
+            }
+        });
+        return codes;
+    }
+
+    function fscore(worksheet, row) {
+        const roa = cellNumber(worksheet, row, "jroa");
+        const cash = cellNumber(worksheet, row, "per_netcash_operate");
+        const roe = cellNumber(worksheet, row, "roe_weight");
+        const eps = cellNumber(worksheet, row, "basic_eps");
+        const current = cellNumber(worksheet, row, "current_ratio");
+        const debt = cellNumber(worksheet, row, "debt_asset_ratio");
+        const speed = cellNumber(worksheet, row, "speed_ratio");
+        const margin = cellNumber(worksheet, row, "sale_gpr");
+        const growth = cellNumber(worksheet, row, "netprofit_yoy_ratio");
+        const profit = cellNumber(worksheet, row, "parent_netprofit");
+        let score = 0;
+        if (roa > 5) score += 1;
+        if (cash > 0) score += 1;
+        if (roe > 10) score += 1;
+        if (eps > 0 && cash > eps) score += 1;
+        if (current > 1.5) score += 1;
+        if (debt !== null && debt >= 0 && debt < 40) score += 1;
+        if (speed > 1) score += 1;
+        if (margin > 30) score += 1;
+        if (growth > 0 && profit > 0) score += 1;
+        return score;
+    }
+
+    function matchFormula1(worksheet, row) {
+        const amount = cellNumber(worksheet, row, "deal_amount");
+        const pe = cellNumber(worksheet, row, "pe9");
+        const pb = cellNumber(worksheet, row, "pbnewmrq");
+        const roe = cellNumber(worksheet, row, "roe_weight");
+        const peg = cellNumber(worksheet, row, "ycpeg");
+        const profit = cellNumber(worksheet, row, "netprofit_yoy_ratio");
+        const deduct = cellNumber(worksheet, row, "deduct_netprofit_growthrate");
+        const income = cellNumber(worksheet, row, "toi_yoy_ratio");
+        const debt = cellNumber(worksheet, row, "debt_asset_ratio");
+        const change = cellNumber(worksheet, row, "change_rate");
+        return passName(worksheet, row)
+            && amount > 200000000
+            && pe > 0 && pe < 25
+            && pb > 0 && pb < 5
+            && roe > 12
+            && peg > 0 && peg < 1
+            && profit > 10
+            && deduct > 10
+            && income > 0
+            && debt !== null && debt < 55
+            && change !== null && change >= -2 && change <= 4;
+    }
+
+    function matchPeg(worksheet, row) {
+        const peg = cellNumber(worksheet, row, "ycpeg");
+        const roe = cellNumber(worksheet, row, "roe_weight");
+        const growth = cellNumber(worksheet, row, "netprofit_growthrate_3y");
+        return passName(worksheet, row) && peg > 0 && peg < 1 && roe > 15 && growth > 0;
+    }
+
+    function matchFscore(worksheet, row) {
+        const pb = cellNumber(worksheet, row, "pbnewmrq");
+        return passName(worksheet, row) && fscore(worksheet, row) >= 8 && pb > 0 && pb < 1.5;
+    }
+
+    function matchGraham(worksheet, row) {
+        const pe = cellNumber(worksheet, row, "pe9");
+        const pb = cellNumber(worksheet, row, "pbnewmrq");
+        const current = cellNumber(worksheet, row, "current_ratio");
+        const dividend = cellNumber(worksheet, row, "zxgxl");
+        const eps = cellNumber(worksheet, row, "basic_eps");
+        return passName(worksheet, row) && pe > 0 && pb > 0 && pe * pb < 22.5 && current > 2 && dividend > 0 && eps > 0;
+    }
+
+    function matchCanslim(worksheet, row) {
+        const quarter = cellNumber(worksheet, row, "netprofit_yoy_ratio");
+        const annual = cellNumber(worksheet, row, "netprofit_growthrate_3y");
+        return passName(worksheet, row) && quarter > 25 && annual > 0 && cellYes(worksheet, row, "long_avg_array");
+    }
+
+    function matchTurtle(worksheet, row) {
+        const volumeRatio = cellNumber(worksheet, row, "volume_ratio");
+        return passName(worksheet, row) && volumeRatio >= 1.5 && cellYes(worksheet, row, "breakup_ma_20days");
+    }
+
+    function matchMacd(worksheet, row) {
+        return passName(worksheet, row) && cellYes(worksheet, row, "long_avg_array") && cellYes(worksheet, row, "macd_golden_fork");
+    }
+
+    function matchChip(worksheet, row) {
+        const turnover = cellNumber(worksheet, row, "turnoverrate");
+        const volumeRatio = cellNumber(worksheet, row, "volume_ratio");
+        const breakout = cellYes(worksheet, row, "break_through") || cellYes(worksheet, row, "breakup_ma_20days");
+        return passName(worksheet, row) && turnover >= 3 && turnover <= 8 && volumeRatio >= 1.5 && breakout;
+    }
+
+    function matchDividend(worksheet, row, screen) {
+        const dividend = cellNumber(worksheet, row, "zxgxl");
+        const fcf = cellNumber(worksheet, row, "per_fcfe");
+        const profit = cellNumber(worksheet, row, "parent_netprofit");
+        const price = cellNumber(worksheet, row, "new_price");
+        const code = normalizeCode(worksheet.getValue(row, columnIndex("code")));
+        if (!passName(worksheet, row) || !(dividend > 4) || !(fcf > 0) || !(profit > 0) || !(price > 0)) {
+            return false;
+        }
+        if (fcf < price * dividend / 100) {
+            return false;
+        }
+        return screen.lowSet.has(code);
+    }
+
+    function matchRps(worksheet, row, screen) {
+        const code = normalizeCode(worksheet.getValue(row, columnIndex("code")));
+        return passName(worksheet, row) && screen.rpsSet.has(code);
+    }
+
+    function collectCodes(worksheet, predicate) {
+        const codes = new Set();
+        const codeIndex = columnIndex("code");
+        const rowCount = worksheet.getRowCount();
+        for (let row = 0; row < rowCount; row++) {
+            if (!predicate(worksheet, row)) {
+                continue;
+            }
+            const code = normalizeCode(worksheet.getValue(row, codeIndex));
+            if (code) {
+                codes.add(code);
+            }
+        }
+        return codes;
+    }
+
+    function takeFilter() {
+        filterSerial += 1;
+        return filterSerial;
+    }
+
+    function holdSheet(worksheet) {
+        if (filterPainting) {
+            return;
+        }
+        worksheet.suspendPaint();
+        if (worksheet.suspendEvent) {
+            worksheet.suspendEvent();
+        }
+        filterPainting = true;
+    }
+
+    function releaseSheet(worksheet) {
+        if (!filterPainting) {
+            return;
+        }
+        if (worksheet.resumeEvent) {
+            worksheet.resumeEvent();
+        }
+        worksheet.resumePaint();
+        filterPainting = false;
+    }
+
+    function firstVisibleRow(worksheet) {
+        const rowCount = worksheet.getRowCount();
+        for (let row = 0; row < rowCount; row++) {
+            if (worksheet.getRowVisible(row)) {
+                return row;
+            }
+        }
+        return -1;
+    }
+
+    function beginMatch(spread, statusBar, job, matchFn, label) {
+        if (job !== filterSerial || !myView || myView.length() === 0) {
+            return;
+        }
+        const worksheet = spread.getActiveSheetTab().getSheet();
+        const rowCount = worksheet.getRowCount();
+        if (filterPainting) {
+            releaseSheet(worksheet);
+        }
+        const rowFilter = worksheet.rowFilter();
+        if (rowFilter && rowFilter.isFiltered && rowFilter.isFiltered()) {
+            rowFilter.reset();
+        }
+        holdSheet(worksheet);
+        if (label) {
+            showWatchTip("正在筛选…", true);
+        }
+        let row = 0;
+        let visible = 0;
+        let first = -1;
+        const chunk = 800;
+        function run() {
+            if (job !== filterSerial) {
+                return;
+            }
+            try {
+                const end = Math.min(row + chunk, rowCount);
+                for (; row < end; row++) {
+                    const show = !!matchFn(worksheet, row);
+                    worksheet.setRowVisible(row, show);
+                    if (show) {
+                        visible += 1;
+                        if (first < 0) {
+                            first = row;
+                        }
+                    }
+                }
+            } catch (e) {
+                if (job === filterSerial) {
+                    releaseSheet(worksheet);
+                }
+                return;
+            }
+            if (job !== filterSerial) {
+                return;
+            }
+            if (row < rowCount) {
+                window.setTimeout(run, 0);
+                return;
+            }
+            try {
+                if (first >= 0) {
+                    worksheet.showRow(first, 0);
+                }
+            } catch (e) {}
+            releaseSheet(worksheet);
+            refreshRecordCount(statusBar, visible);
+            if (label) {
+                showWatchTip(label + "：" + visible + " 只", visible > 0);
+            }
+        }
+        window.setTimeout(run, 0);
+    }
+
+    function ensureScreen(job, done) {
+        if (screenCache && screenCache.date === dateParam) {
+            if (job === filterSerial) {
+                done(screenCache);
+            }
+            return;
+        }
+        showWatchTip("正在用本地日K计算相对强弱和一年波动率…", true);
+        $.ajax({
+            type: "get",
+            url: "/instock/data/screen",
+            data: {date: dateParam},
+            timeout: 120000,
+            success: function (payload) {
+                const body = typeof payload === "string" ? JSON.parse(payload) : payload;
+                body.date = dateParam;
+                body.rpsSet = new Set(body.rps || []);
+                body.lowSet = new Set(body.low_vol || []);
+                screenCache = body;
+                if (job !== filterSerial) {
+                    return;
+                }
+                done(body);
+            },
+            error: function () {
+                if (job !== filterSerial) {
+                    return;
+                }
+                showWatchTip("相对强弱没有算完", false);
+            }
+        });
+    }
+
+    function applyNamedShortcut(spread, statusBar, key) {
+        if (nameParam !== "cn_stock_selection" || !myView || myView.length() === 0) {
+            return;
+        }
+        const job = takeFilter();
+        markShortcut(key);
+        const button = document.querySelector('#shortcut-bar input[data-key="' + key + '"]');
+        const label = button ? button.value : "";
+        if (key === "rps" || key === "dividend") {
+            ensureScreen(job, function (screen) {
+                beginMatch(spread, statusBar, job, function (sheet, row) {
+                    return key === "rps" ? matchRps(sheet, row, screen) : matchDividend(sheet, row, screen);
+                }, label);
+            });
+            return;
+        }
+        window.setTimeout(function () {
+            if (job !== filterSerial) {
+                return;
+            }
+            const worksheet = spread.getActiveSheetTab().getSheet();
+            if (key === "magic") {
+                const codes = magicCodes(worksheet);
+                const codeIndex = columnIndex("code");
+                beginMatch(spread, statusBar, job, function (sheet, row) {
+                    return codes.has(normalizeCode(sheet.getValue(row, codeIndex)));
+                }, label);
+                return;
+            }
+            const matchers = {
+                peg: matchPeg,
+                fscore: matchFscore,
+                graham: matchGraham,
+                canslim: matchCanslim,
+                turtle: matchTurtle,
+                macd: matchMacd,
+                chip: matchChip
+            };
+            if (!matchers[key]) {
+                return;
+            }
+            beginMatch(spread, statusBar, job, matchers[key], label);
+        }, 0);
     }
 
     Date.prototype.format = function (format) {

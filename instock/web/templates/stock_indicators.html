@@ -22,6 +22,9 @@
             });
         }
 </script>
+{% if notice %}
+<p style="margin:16px;color:#a94442;">{{ notice }}</p>
+{% end %}
 {% for element in comp_list %}
 <div>
     {% raw element["div"] %}

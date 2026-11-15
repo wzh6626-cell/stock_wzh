@@ -122,13 +122,13 @@ def get_plot_kline(code, stock, date, stock_name):
             if len(label_data_u.index) > 0:
                 label_data_u.loc[:, 'label_cn'] = label_cn
                 label_source_u = ColumnDataSource(label_data_u)
-                locals()[f'pattern_labels_u_{str(i)}'] = LabelSet(x='index', y='high', text="label_cn",
-                                                                  source=label_source_u, x_offset=7, y_offset=5,
-                                                                  angle=90, angle_units='deg', text_color='red',
-                                                                  text_font_style='bold', text_font_size="9pt",
-                                                                  visible=pattern_is_show)
-                p_kline.add_layout(locals()[f'pattern_labels_u_{str(i)}'])
-                checkboxes_args[f'lsu{str(i)}'] = locals()[f'pattern_labels_u_{str(i)}']
+                pattern_labels_u = LabelSet(x='index', y='high', text="label_cn",
+                                            source=label_source_u, x_offset=7, y_offset=5,
+                                            angle=90, angle_units='deg', text_color='red',
+                                            text_font_style='bold', text_font_size="9pt",
+                                            visible=pattern_is_show)
+                p_kline.add_layout(pattern_labels_u)
+                checkboxes_args[f'lsu{str(i)}'] = pattern_labels_u
                 checkboxes_code = f"{checkboxes_code}lsu{i}.visible = acts.includes({i});"
                 pattern_labels.append(label_cn)
                 isHas = True
@@ -138,14 +138,14 @@ def get_plot_kline(code, stock, date, stock_name):
             if len(label_data_d.index) > 0:
                 label_data_d.loc[:, 'label_cn'] = label_cn
                 label_source_d = ColumnDataSource(label_data_d)
-                locals()[f'pattern_labels_d_{str(i)}'] = LabelSet(x='index', y='low', text='label_cn',
-                                                                  source=label_source_d, x_offset=-7, y_offset=-5,
-                                                                  angle=270, angle_units='deg',
-                                                                  text_color='green',
-                                                                  text_font_style='bold', text_font_size="9pt",
-                                                                  visible=pattern_is_show)
-                p_kline.add_layout(locals()[f'pattern_labels_d_{str(i)}'])
-                checkboxes_args[f'lsd{str(i)}'] = locals()[f'pattern_labels_d_{str(i)}']
+                pattern_labels_d = LabelSet(x='index', y='low', text='label_cn',
+                                            source=label_source_d, x_offset=-7, y_offset=-5,
+                                            angle=270, angle_units='deg',
+                                            text_color='green',
+                                            text_font_style='bold', text_font_size="9pt",
+                                            visible=pattern_is_show)
+                p_kline.add_layout(pattern_labels_d)
+                checkboxes_args[f'lsd{str(i)}'] = pattern_labels_d
                 checkboxes_code = f"{checkboxes_code}lsd{i}.visible = acts.includes({i});"
                 if not isHas:
                     pattern_labels.append(label_cn)

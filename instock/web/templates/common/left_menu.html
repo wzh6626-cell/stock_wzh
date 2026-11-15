@@ -69,6 +69,67 @@
                 </li>
             </ul>
         </li>
+        {% set jobOpen = "" %}
+        {% set fetchActive = "" %}
+        {% set scheduleActive = "" %}
+        {% set forecastActive = "" %}
+        {% set accuracyActive = "" %}
+        {% try %}
+            {% if request.path.startswith("/instock/job") or request.path.startswith("/instock/forecast") %}
+                {% set jobOpen = "open" %}
+            {% end %}
+            {% if request.path == "/instock/job/fetch" %}
+                {% set fetchActive = "active" %}
+            {% end %}
+            {% if request.path == "/instock/job/schedule" %}
+                {% set scheduleActive = "active" %}
+            {% end %}
+            {% if request.path == "/instock/forecast" %}
+                {% set forecastActive = "active" %}
+            {% end %}
+            {% if request.path.startswith("/instock/forecast/accuracy") %}
+                {% set accuracyActive = "active" %}
+            {% end %}
+        {% except %}
+        {% end %}
+        <li class="{{ jobOpen }}">
+            <a href="#" class="dropdown-toggle">
+                <i class="menu-icon fa fa-cloud-download"></i>
+                <span class="menu-text">数据任务</span>
+                <b class="arrow fa fa-angle-down"></b>
+            </a>
+            <b class="arrow"></b>
+            <ul class="submenu">
+                <li class="{{ fetchActive }}">
+                    <a href="/instock/job/fetch">
+                        <i class="menu-icon fa fa-caret-right"></i>
+                        拉取数据
+                    </a>
+                    <b class="arrow"></b>
+                </li>
+                <li class="{{ scheduleActive }}">
+                    <a href="/instock/job/schedule">
+                        <i class="menu-icon fa fa-caret-right"></i>
+                        自动同步
+                    </a>
+                    <b class="arrow"></b>
+                </li>
+                <li class="{{ forecastActive }}">
+                    <a href="/instock/forecast">
+                        <i class="menu-icon fa fa-caret-right"></i>
+                        自选预判
+                    </a>
+                    <b class="arrow"></b>
+                </li>
+                <li class="{{ accuracyActive }}">
+                    <a href="/instock/forecast/accuracy">
+                        <i class="menu-icon fa fa-caret-right"></i>
+                        预判准确率
+                    </a>
+                    <b class="arrow"></b>
+                </li>
+            </ul>
+        </li>
 {% set loopType = "" %}
 {% for leftMenuTmp in leftMenu.leftMenuList %}
     {% if leftMenuTmp.type != loopType %}

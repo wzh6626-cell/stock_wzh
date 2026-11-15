@@ -1,0 +1,193 @@
+{% extends "layout/default.html" %}
+
+{% block main_content %}
+<style>
+    .forecast-page { padding: 16px 20px 32px; color: #333; }
+    .forecast-page h1 { margin: 0 0 6px; font-size: 22px; }
+    .forecast-page .hint { color: #666; margin-bottom: 12px; }
+    .forecast-page .toolbar { margin: 10px 0 16px; }
+    .forecast-page .toolbar input[type="text"],
+    .forecast-page .toolbar input[type="number"] { height: 30px; width: 120px; display: inline-block; }
+    .forecast-page .stock-list { margin-top: 4px; }
+    .forecast-page .stock-card { background: #fff; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; }
+    .forecast-page .stock-card summary { list-style: none; cursor: pointer; padding: 12px 14px; }
+    .forecast-page .stock-card summary::-webkit-details-marker { display: none; }
+    .forecast-page .stock-card summary:hover { background: #f7f7f7; }
+    .forecast-page .stock-card[open] summary { border-bottom: 1px solid #eee; background: #fafafa; }
+    .forecast-page .head-row,
+    .forecast-page .head-meta,
+    .forecast-page .headline { display: block; }
+    .forecast-page .head-row { display: flex; align-items: baseline; gap: 10px; }
+    .forecast-page .head-row strong { font-size: 16px; }
+    .forecast-page .toggle-hint { margin-left: auto; color: #337ab7; font-size: 13px; white-space: nowrap; }
+    .forecast-page .stock-card .hint-open { display: none; }
+    .forecast-page .stock-card[open] .hint-open { display: inline; }
+    .forecast-page .stock-card[open] .hint-closed { display: none; }
+    .forecast-page .head-meta { color: #666; margin-top: 4px; font-size: 13px; }
+    .forecast-page .head-meta span { margin-right: 14px; }
+    .forecast-page .headline { margin-top: 4px; }
+    .forecast-page .stock-card-body { padding: 4px 14px 12px; }
+    .forecast-page .stock-card-body p { line-height: 1.75; margin: 0 0 8px; }
+    .forecast-page .block-title { margin: 12px 0 4px; font-size: 15px; }
+    .forecast-page .glossary { background: #f7f7f7; border: 1px solid #e5e5e5; padding: 10px 14px; margin: 12px 0; }
+    .forecast-page .glossary h2 { margin: 0 0 8px; font-size: 16px; }
+    .forecast-page .glossary li { margin: 0 0 6px; line-height: 1.65; }
+    .forecast-page .up { color: #c0392b; }
+    .forecast-page .down { color: #1e8449; }
+    .forecast-page .flat { color: #8a6d3b; }
+    .forecast-page .warn { color: #a94442; }
+    .hist-menu { position: fixed; z-index: 20; background: #fff; border: 1px solid #ccc; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+    .hist-menu button { display: block; width: 120px; text-align: left; background: #fff; border: 0; padding: 8px 12px; }
+    .hist-menu button:hover { background: #f5f5f5; }
+</style>
+<div class="forecast-page">
+    <h1>自选预判</h1>
+    <p class="hint">
+        只计算左侧关注里的股票，数据日 {{ asof or "暂无" }}。
+        下面按成交量从高到低排成卡片，点开一只再看预判。在卡片上右键可以拉取这只股票的日K。
+    </p>
+    {% if notice %}
+    <div class="alert alert-info">{{ notice }}</div>
+    {% end %}
+
+    <div class="toolbar">
+        <form method="post" action="/instock/forecast" style="display:inline-block;margin-right:18px;">
+            <input type="hidden" name="action" value="setting">
+            总资金
+            <input class="form-control input-sm" type="number" name="capital" min="1" step="1000" value="{{ setting['capital'] }}">
+            单笔风险%
+            <input class="form-control input-sm" type="number" name="risk_pct" min="0.1" max="20" step="0.1" value="{{ setting['risk_pct'] }}">
+            <button class="btn btn-primary btn-sm" type="submit">保存资金</button>
+        </form>
+        <form method="post" action="/instock/forecast" style="display:inline-block;margin-right:18px;">
+            <input type="hidden" name="action" value="add">
+            <input class="form-control input-sm" type="text" name="code" maxlength="6" placeholder="600000">
+            <button class="btn btn-default btn-sm" type="submit">加入自选</button>
+        </form>
+        <form method="post" action="/instock/forecast" style="display:inline-block;">
+            <input type="hidden" name="action" value="import_formula1">
+            <button class="btn btn-default btn-sm" type="submit">把公式一结果加入自选</button>
+        </form>
+        <form method="post" action="/instock/forecast" style="display:inline-block;">
+            <input type="hidden" name="action" value="import_formula2">
+            <button class="btn btn-default btn-sm" type="submit" title="ROE大于15且净利润3年复合增长为正，毛利率大于40，每股自由现金流为正且资本开支不到净利润一半，总负债可在4年净利润内还清，现价低于自由现金流8%折现估值的70%。">把巴菲特选股1加入自选</button>
+        </form>
+    </div>
+
+    {% if len(plans) == 0 %}
+    <div class="alert alert-warning">自选还是空的。输入代码加入，或把公式一的筛选结果加入后再看预判。</div>
+    {% end %}
+
+    <div class="stock-list">
+    {% for item in plans %}
+    <details class="stock-card" data-code="{{ item['code'] }}" data-name="{{ item['name'] }}" {% if open_code == item["code"] %}open{% end %}>
+        <summary>
+            <span class="head-row">
+                <strong>{{ item["code"] }} {{ item["name"] }}</strong>
+                {% if item["ready"] %}
+                    {% if item["trend"] == "上升" %}
+                    <span class="up">{{ item["trend"] }}</span>
+                    {% elif item["trend"] == "下降" %}
+                    <span class="down">{{ item["trend"] }}</span>
+                    {% else %}
+                    <span class="flat">{{ item["trend"] }}</span>
+                    {% end %}
+                {% end %}
+                <span class="toggle-hint"><span class="hint-closed">点击查看预判</span><span class="hint-open">点击收起</span></span>
+            </span>
+            <span class="head-meta">
+                {% if item["ready"] %}<span>现价 {{ item["price"] }}</span>{% end %}
+                <span>{{ item["volume_text"] }}</span>
+                {% if item["shares"] %}<span>持有 {{ item["shares"] }} 股</span>{% end %}
+            </span>
+            <span class="headline">{{ item["headline"] }}</span>
+        </summary>
+        <div class="stock-card-body">
+            {% if not item["ready"] %}
+            <p class="warn">{{ item["message"] }}</p>
+            {% else %}
+            <div class="glossary">
+                <h2>这页里的词是什么意思</h2>
+                <ul>
+                    <li><b>均线</b>：最近若干个交易日收盘价的平均数。10 日看近两周，20 日看近一个月，60 日看近一个季度。现价在均线上面，表示这段时间的收盘价整体高于平均水平；在下面则相反。20 日均线在 60 日均线上面，表示近一个月的价格重心高于近一个季度。</li>
+                    <li><b>14 日波动</b>：最近 14 个交易日里，每天最高价和最低价相差多少钱的平均值。它只说明这只股票平时一天大概晃多少，不表示明天会涨还是会跌。</li>
+                    <li><b>RSI（相对强弱指标）</b>：把最近 14 个交易日的上涨幅度和下跌幅度比一比，得到 0 到 100 的分数。可以把它理解成“最近是涨的力气大，还是跌的力气大”。50 左右表示两边差不多；70 以上表示涨得多、偏热，不适合追高；30 以下表示跌得多、偏冷。分数低只说明最近跌得多，下跌趋势里不能只因为分数低就买。</li>
+                </ul>
+            </div>
+            {% for section in item["sections"] %}
+            <p class="block-title"><b>{{ section["title"] }}</b></p>
+            {% for para in section["paragraphs"] %}
+            <p>{{ para }}</p>
+            {% end %}
+            {% end %}
+            {% end %}
+            <form method="post" action="/instock/forecast">
+                <input type="hidden" name="action" value="holding">
+                <input type="hidden" name="code" value="{{ item['code'] }}">
+                已持有股数
+                <input class="form-control input-sm" style="width:100px;display:inline-block;" type="number" name="shares" min="0" step="100" value="{{ item['shares'] }}">
+                成本价
+                <input class="form-control input-sm" style="width:100px;display:inline-block;" type="number" name="cost" min="0" step="0.01" value="{{ item['cost'] }}">
+                <button class="btn btn-primary btn-sm" type="submit">按持仓重算</button>
+            </form>
+            <form method="post" action="/instock/forecast" style="margin-top:8px;">
+                <input type="hidden" name="action" value="remove">
+                <input type="hidden" name="code" value="{{ item['code'] }}">
+                <button class="btn btn-link btn-sm" type="submit">移出自选</button>
+            </form>
+        </div>
+    </details>
+    {% end %}
+    </div>
+    <div id="hist-menu" class="hist-menu" hidden>
+        <button type="button" id="hist-menu-fetch">拉取日K</button>
+    </div>
+</div>
+<script>
+    const forecastAsof = "{{ asof or '' }}";
+    const histMenu = document.getElementById("hist-menu");
+    const histButton = document.getElementById("hist-menu-fetch");
+    document.querySelectorAll(".stock-card").forEach(function (card) {
+        card.addEventListener("contextmenu", function (event) {
+            event.preventDefault();
+            histMenu.hidden = false;
+            histMenu.style.left = Math.min(event.clientX, window.innerWidth - 130) + "px";
+            histMenu.style.top = Math.min(event.clientY, window.innerHeight - 40) + "px";
+            histButton.dataset.code = card.dataset.code;
+            histButton.dataset.name = card.dataset.name || "";
+        });
+    });
+    document.addEventListener("click", function () {
+        histMenu.hidden = true;
+    });
+    histButton.addEventListener("click", function (event) {
+        event.stopPropagation();
+        const code = histButton.dataset.code;
+        const name = histButton.dataset.name || "";
+        histMenu.hidden = true;
+        histButton.disabled = true;
+        $.ajax({
+            type: "get",
+            url: "/instock/data/hist",
+            data: {code: code, date: forecastAsof},
+            timeout: 60000,
+            success: function (payload) {
+                const body = typeof payload === "string" ? JSON.parse(payload) : payload;
+                const text = (name ? code + " " + name + " " : "") + (body.message || "已拉取日K");
+                window.location = "/instock/forecast?code=" + encodeURIComponent(code) + "&notice=" + encodeURIComponent(text);
+            },
+            error: function (xhr) {
+                histButton.disabled = false;
+                let message = code + " 拉取日K失败";
+                try {
+                    const body = JSON.parse(xhr.responseText);
+                    if (body && body.message) {
+                        message = body.message;
+                    }
+                } catch (e) {}
+                window.location = "/instock/forecast?code=" + encodeURIComponent(code) + "&notice=" + encodeURIComponent(message);
+            }
+        });
+    });
+</script>
+{% end %}
